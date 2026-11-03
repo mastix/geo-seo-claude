@@ -52,8 +52,8 @@ Right-click the cloned folder and choose "Open Git Bash here", or navigate to it
 ### What the installer does
 
 - Copies the `geo` orchestrator skill to `~/.claude/skills/geo/`
-- Copies 16 sub-skills to `~/.claude/skills/geo-*/`
-- Copies 6 subagent definitions to `~/.claude/agents/`
+- Copies 17 sub-skills to `~/.claude/skills/geo-*/`
+- Copies 7 subagent definitions to `~/.claude/agents/`
 - Installs Python dependencies via `pip install --user`
 - Optionally installs the Playwright Chromium browser for screenshots
 

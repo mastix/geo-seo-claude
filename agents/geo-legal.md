@@ -222,7 +222,7 @@ Check only what applies to the business type, and only where visible without ord
 - Food (if applicable): LMIV Art. 14 mandatory information on the product page (name, ingredients, allergens highlighted, net quantity, storage conditions, responsible food business operator, origin where required, nutrition declaration). Organic code (DE-ÖKO-xxx) consistent
 - Non-food products: GPSR Art. 19 information
 - Accessibility statement (BFSG) for B2C shops, unless the micro-enterprise exemption plausibly applies (note: cannot be verified from outside)
-- AI chatbot or AI-generated content: AI Act Art. 50 transparency labelling (verify applicability date)
+- AI chatbot or AI-generated content: covered by the separate `geo-ai-act` agent (EU AI Act Art. 50). Do not duplicate it; refer to its section
 - Order button wording (§ 312j Abs. 3 BGB): ❔ not verifiable without placing an order. Recommend a manual check
 
 ## Step 8: Score

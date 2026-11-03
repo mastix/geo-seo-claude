@@ -26,6 +26,7 @@ This file documents every command in the `geo-seo-claude` skill bundle. Commands
 | `/geo technical <url>` | Technical SEO audit with GEO-specific checks |
 | `/geo content <url>` | Content quality and E-E-A-T assessment |
 | `/geo legal <url>` | Legal pre-check: Impressum, privacy policy vs. detected tech, AGB (DE/AT/CH + EU) |
+| `/geo ai-act <url>` | EU AI Act Art. 50: AI image markers, deep-fake labels, chatbot disclosure |
 
 **Reports** — client-ready deliverables
 
@@ -58,7 +59,7 @@ Performs a comprehensive GEO + SEO audit of a website using five parallel subage
 
 - Phase 1 (sequential): fetches the homepage, detects business type (SaaS, Local, E-commerce, Publisher, Agency), and crawls up to 50 pages from the sitemap or internal links.
 - Phase 2 (parallel): delegates to five specialized subagents simultaneously — AI visibility, platform analysis, technical SEO, content E-E-A-T, and schema markup. See [architecture.md](architecture.md) for the subagent flow.
-- Phase 2b (sequential): runs the `geo-legal` subagent last, passing it the technology findings of Phase 2. See [/geo legal](#geo-legal).
+- Phase 2b (sequential): runs the `geo-legal` and `geo-ai-act` subagents last, in parallel with each other, passing them the findings of Phase 2. See [/geo legal](#geo-legal) and [/geo ai-act](#geo-ai-act).
 - Phase 3 (sequential): aggregates subagent scores into a weighted composite GEO Score (0–100). The Legal Compliance Score is reported next to it but not weighted in. See [scoring-methodology.md](scoring-methodology.md) for the weighting formula.
 - Classifies every issue by severity: Critical, High, Medium, or Low.
 - Produces a 30-day action plan with weekly themes.
@@ -420,6 +421,40 @@ Writes `GEO-LEGAL-COMPLIANCE.md`. It contains a disclaimer, the Legal Compliance
 **When to use it**
 
 Before a relaunch or go-live, after adding new tracking or marketing tools, or as part of a client audit for DACH/EU sites. Have a lawyer review any findings before acting on them.
+
+---
+
+## /geo ai-act
+
+Checks a website against the transparency duties of Article 50 of the EU AI Act (applicable since 2 August 2026). Not legal advice.
+
+**Usage**
+
+```
+/geo ai-act https://example.com
+```
+
+**What it does**
+
+- Verifies the current Article 50 rules and dates against primary sources (EUR-Lex, the Commission's Article 50 FAQ) before checking anything.
+- Explains what applies to this site. Website operators are *deployers*: they must visibly label AI images, audio or video that are **deep fakes**, not every AI image. Machine-readable marking is the AI vendor's duty. Chatbots must disclose they are AI, and AI-written public-interest text must be disclosed unless human-reviewed.
+- Runs `scripts/ai_content_scanner.py` on up to 10 image-heavy pages. It reads C2PA, IPTC `DigitalSourceType` and generator metadata from each image, and finds visible labels ("KI-generiert", "Symbolbild (KI)", "AI-generated") at the image or on the page.
+- Opens each AI-marked but unlabelled image and applies the three deep-fake criteria: resemblance, existence, false appearance of authenticity. Checks that labels are visible (alt text alone is not), and checks chatbot disclosure.
+- Never infers AI origin from style. Images without metadata are reported as "no signal", not as "not AI".
+
+**Inputs**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<url>` | Yes | Homepage URL of the site |
+
+**Output**
+
+Writes `GEO-AI-ACT-CHECK.md`. It contains a disclaimer, a status (✅ / ⚠️ / ❔), what Art. 50 requires for the site, a legal baseline table, an AI image table with deep-fake verdicts, chatbot and AI-text findings, Needs Review, and recommended actions. During `/geo audit` the same content becomes the "EU AI Act Transparency" section of `GEO-AUDIT-REPORT.md`.
+
+**When to use it**
+
+For sites that use AI imagery (stock replacements, recipe or product visuals, team or event pictures) or AI chatbots, before publishing campaigns, and as part of client audits in the EU.
 
 ---
 

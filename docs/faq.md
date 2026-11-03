@@ -34,7 +34,7 @@ Yes, but you must use Git Bash, not PowerShell or Command Prompt. The Windows in
 
 ### What does `install.sh` actually do?
 
-It checks for Git, Python 3.10+, and Claude Code CLI, then copies files into your Claude configuration directory (`~/.claude/`). Specifically: the main skill goes to `~/.claude/skills/geo/`, each of the 16 sub-skills goes to `~/.claude/skills/geo-<name>/`, and the 6 agent files go to `~/.claude/agents/`. It then installs Python dependencies from `requirements.txt` using `pip install --user`. If you run it interactively, it also offers to install the Playwright Chromium browser for screenshot support. The installer works both from a cloned local directory and via a `curl | bash` pipe from the repository URL.
+It checks for Git, Python 3.10+, and Claude Code CLI, then copies files into your Claude configuration directory (`~/.claude/`). Specifically: the main skill goes to `~/.claude/skills/geo/`, each of the 17 sub-skills goes to `~/.claude/skills/geo-<name>/`, and the 7 agent files go to `~/.claude/agents/`. It then installs Python dependencies from `requirements.txt` using `pip install --user`. If you run it interactively, it also offers to install the Playwright Chromium browser for screenshot support. The installer works both from a cloned local directory and via a `curl | bash` pipe from the repository URL.
 
 ### Do I need Playwright?
 
@@ -54,7 +54,7 @@ The score (0-100) is a weighted aggregate across six categories: AI Citability &
 
 ### How do the parallel subagents work?
 
-During a full audit, five subagents run simultaneously after the initial discovery phase: `geo-ai-visibility`, `geo-platform-analysis`, `geo-technical`, `geo-content`, and `geo-schema`. Each maps to an agent definition file in `~/.claude/agents/` and is responsible for a distinct slice of the analysis. Claude Code's agent system handles the parallel dispatch; the orchestrator then collects all five reports. A sixth agent, `geo-legal`, runs after them because it needs their technology findings, and the orchestrator then synthesizes the composite score. See [architecture.md](architecture.md) for the full flow.
+During a full audit, five subagents run simultaneously after the initial discovery phase: `geo-ai-visibility`, `geo-platform-analysis`, `geo-technical`, `geo-content`, and `geo-schema`. Each maps to an agent definition file in `~/.claude/agents/` and is responsible for a distinct slice of the analysis. Claude Code's agent system handles the parallel dispatch; the orchestrator then collects all five reports. Two more agents, `geo-legal` and `geo-ai-act`, run after them (in parallel with each other) because they need the findings, and the orchestrator then synthesizes the composite score. See [architecture.md](architecture.md) for the full flow.
 
 ### Where is prospect, proposal, and report data stored?
 
@@ -92,6 +92,10 @@ Open an issue on GitHub. For bugs, include a clear description, the URL you were
 ### Is the legal compliance check legal advice?
 
 No. `/geo legal` and the legal step of `/geo audit` are an automated pre-check of publicly visible pages: Impressum, Datenschutzerklärung and AGB, compared with the technologies the site actually loads. The agent verifies the current legal baseline against primary sources on every run, but it cannot see facts like employee count or contracts, and it never places orders. Findings marked ❔ need a manual check. Have a qualified lawyer review the legal texts before relying on them.
+
+### Does every AI-generated image have to be labelled under the EU AI Act?
+
+No. Article 50 makes the AI *tool vendors* (providers) mark their output machine-readably. A website operator (deployer) must visibly disclose AI images, audio or video only when they are **deep fakes**: content that resembles real people, objects, places or events and could falsely appear authentic. Chatbots must disclose that they are AI, and AI-written text on matters of public interest must be disclosed unless it was human-reviewed under editorial responsibility. `/geo ai-act` checks this from the outside. It can only detect AI images whose provenance metadata (C2PA, IPTC) survived; many CMSs strip it, so labelling stays the operator's responsibility. Applicable since 2 August 2026.
 
 ### Can this tool guarantee AI citations or rankings?
 

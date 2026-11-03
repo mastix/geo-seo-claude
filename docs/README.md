@@ -1,6 +1,6 @@
 # GEO-SEO Claude Code Skill — Documentation
 
-`geo-seo-claude` is a Claude Code skill bundle that runs GEO (Generative Engine Optimization) and SEO audits against a website. It orchestrates 16 sub-skills, 5 parallel subagents plus a final legal compliance subagent, and a set of Python utilities to produce a composite GEO Score (0–100), a separate Legal Compliance Score, and a prioritized action plan.
+`geo-seo-claude` is a Claude Code skill bundle that runs GEO (Generative Engine Optimization) and SEO audits against a website. It orchestrates 17 sub-skills, 5 parallel subagents plus two final legal subagents (legal compliance, EU AI Act), and a set of Python utilities to produce a composite GEO Score (0–100), a separate Legal Compliance Score and AI Act status, and a prioritized action plan.
 
 If you are new here, start with **Getting Started**. If you are contributing, skim **Architecture** and **Skills & Agents** first.
 

@@ -279,6 +279,20 @@ The agent re-verifies the legal baseline against primary sources on every run an
 
 ---
 
+## EU AI Act Transparency Status (reported separately)
+
+**Implemented by:** [`agents/geo-ai-act.md`](../agents/geo-ai-act.md) and [`scripts/ai_content_scanner.py`](../scripts/ai_content_scanner.py)
+
+The AI Act check (Art. 50) runs in parallel with the legal check in the last analysis step. It returns a **status, not a score**, and is not weighted into the GEO Score. AI origin can only be proven where provenance metadata survived, so a percentage would suggest a precision the check doesn't have.
+
+| Status | Meaning |
+|---|---|
+| ✅ No deficiencies found in the checked points | No likely deep fake without a visible label; chatbot disclosure present or not applicable |
+| ⚠️ Action needed | At least one likely or uncertain deep fake without an adequate visible label, or a chatbot without AI disclosure |
+| ❔ Not verifiable | No images could be scanned, or the Article 50 rules could not be verified online |
+
+---
+
 ## Caveats
 
 **Deterministic vs LLM-judged scoring.** The citability scorer (`scripts/citability_scorer.py`) and the llms.txt validator (`scripts/llmstxt_generator.py`) are fully deterministic: given the same HTML, they return the same numerical result every time. The Brand Authority, Content E-E-A-T, Technical, Schema, and Platform scores are produced by LLM subagents following documented rubrics; they are guided evaluations rather than reproducible computations. Two runs on the same URL may produce small differences in LLM-judged categories.

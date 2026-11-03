@@ -116,7 +116,7 @@ Delegate analysis to 5 specialized subagents. Each subagent operates on the coll
 
 ---
 
-### Phase 2b: Legal Compliance Check (Last Analysis Step)
+### Phase 2b: Legal & AI Act Checks (Last Analysis Step)
 
 Run this **after all five Phase 2 subagents have finished**, not in parallel with them. It needs their technology picture.
 
@@ -128,6 +128,11 @@ Run this **after all five Phase 2 subagents have finished**, not in parallel wit
   - **AGB** (terms and conditions), if present: void or risky clauses, withdrawal rules, consumer information
 - Returns a **Legal Compliance Score (0-100)**. It is **not** part of the composite GEO Score (see below).
 - If the site is clearly outside DE/AT/CH/EU, the agent runs only generic checks and says so.
+
+**Subagent 7: EU AI Act Transparency (geo-ai-act)**: launch it **in parallel with `geo-legal`**.
+- Pass it: the target URL, the business type, up to 10 image-heavy pages from the crawl set (home, about/team, news/blog, products, galleries), and any chat widgets found so far.
+- Verifies the current Article 50 rules, then runs `scripts/ai_content_scanner.py`. The scanner finds AI provenance markers in images (C2PA, IPTC DigitalSourceType, generator metadata) and visible "AI-generated" labels. The agent then judges per AI image whether it is a deep fake that needs a visible label, and checks chatbot and AI-text disclosure.
+- Returns a status (✅ / ⚠️ / ❔), not a score. It is **not** part of the composite GEO Score.
 
 ---
 
@@ -151,7 +156,7 @@ The overall GEO Score (0-100) is a weighted average of six category scores:
 GEO_Score = (Citability * 0.25) + (Brand * 0.20) + (EEAT * 0.20) + (Technical * 0.15) + (Schema * 0.10) + (Platform * 0.10)
 ```
 
-The **Legal Compliance Score** from `geo-legal` is reported next to the GEO Score but is **not weighted into it**. Legal compliance is a liability topic, not an AI-visibility signal. Keeping it separate also keeps GEO Scores comparable with earlier audits (`/geo compare`). Merge the legal findings into the severity lists below, tagged `[Legal]`.
+The **Legal Compliance Score** from `geo-legal` is reported next to the GEO Score but is **not weighted into it**. Legal compliance is a liability topic, not an AI-visibility signal. Keeping it separate also keeps GEO Scores comparable with earlier audits (`/geo compare`). Merge the legal findings into the severity lists below, tagged `[Legal]`. The AI Act status from `geo-ai-act` is reported the same way (no score, not weighted), with findings tagged `[AI Act]`.
 
 #### Score Interpretation
 
@@ -235,7 +240,7 @@ Generate a file called `GEO-AUDIT-REPORT.md` with the following structure:
 | Platform Optimization | [X]/100 | 10% | [X] |
 | **Overall GEO Score** | | | **[X]/100** |
 
-**Legal Compliance Score: [X]/100 ([Rating])**: reported separately, not part of the GEO Score. Automated pre-check, not legal advice.
+**Legal Compliance Score: [X]/100 ([Rating])** · **EU AI Act (Art. 50): [Status]**: both reported separately, not part of the GEO Score. Automated pre-checks, not legal advice.
 
 ---
 
@@ -282,6 +287,12 @@ Generate a file called `GEO-AUDIT-REPORT.md` with the following structure:
 ## Legal Compliance ([X]/100)
 
 [Section returned by the geo-legal subagent: disclaimer, score breakdown, legal baseline verification, technology inventory, Impressum / Datenschutzerklärung / AGB findings, Needs Legal Review]
+
+---
+
+## EU AI Act Transparency (Art. 50): [Status]
+
+[Section returned by the geo-ai-act subagent: disclaimer, what Art. 50 requires for this site, legal baseline, AI image table with deep-fake verdicts, chatbots, AI text, Needs Review]
 
 ---
 

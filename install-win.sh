@@ -321,6 +321,7 @@ main() {
     echo "    /geo technical <url>  Technical SEO audit"
     echo "    /geo content <url>    Content quality & E-E-A-T"
     echo "    /geo legal <url>      Impressum, privacy policy & AGB check"
+    echo "    /geo ai-act <url>     EU AI Act Art. 50: AI image & chatbot labels"
     echo "    /geo report <url>     Client-ready GEO report"
     echo "    /geo report-pdf       Generate PDF report from audit data"
     echo ""

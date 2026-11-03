@@ -8,7 +8,7 @@ description: >
   optimization, schema markup, technical SEO, content quality (E-E-A-T), and
   client-ready GEO report generation. Use when user says "geo", "seo", "audit",
   "AI search", "AI visibility", "optimize", "citability", "llms.txt", "schema",
-  "brand mentions", "GEO report", "Impressum", "Datenschutz", "AGB", or any URL for analysis.
+  "brand mentions", "GEO report", "Impressum", "Datenschutz", "AGB", "AI Act", "KI-Kennzeichnung", or any URL for analysis.
 allowed-tools: Read, Grep, Glob, Bash, WebFetch, Write
 ---
 
@@ -34,6 +34,7 @@ allowed-tools: Read, Grep, Glob, Bash, WebFetch, Write
 | `/geo technical <url>` | Traditional technical SEO audit |
 | `/geo content <url>` | Content quality and E-E-A-T assessment |
 | `/geo legal <url>` | Legal pre-check: Impressum, privacy policy vs. detected tech, AGB (DE/AT/CH + EU) |
+| `/geo ai-act <url>` | EU AI Act Art. 50: AI image markers, deep-fake labels, chatbot disclosure |
 | `/geo report <url>` | Generate client-ready GEO deliverable |
 | `/geo report-pdf <url>` | Generate professional PDF report with charts and scores |
 | `/geo quick <url>` | 60-second GEO visibility snapshot |
@@ -81,12 +82,12 @@ Launch these 5 subagents simultaneously:
 | geo-content | `agents/geo-content.md` | Content quality, E-E-A-T, readability, AI content detection |
 | geo-schema | `agents/geo-schema.md` | Schema markup detection, validation, generation |
 
-**Phase 2b: Legal Compliance (Sequential, last analysis step)**
-After all five subagents finish, launch `geo-legal` (`agents/geo-legal.md`) and pass it the technology context they found (platform, third-party services, embeds, payment methods). It verifies the current legal baseline, then checks the Impressum, the Datenschutzerklärung against the detected technologies (`scripts/tech_detector.py`), and the AGB if present.
+**Phase 2b: Legal & AI Act (Sequential, last analysis step)**
+After all five subagents finish, launch `geo-legal` (`agents/geo-legal.md`) and, in parallel with it, `geo-ai-act` (`agents/geo-ai-act.md`; Art. 50 transparency for AI images and chatbots). Pass `geo-legal` and pass it the technology context they found (platform, third-party services, embeds, payment methods). It verifies the current legal baseline, then checks the Impressum, the Datenschutzerklärung against the detected technologies (`scripts/tech_detector.py`), and the AGB if present.
 
 **Phase 3: Synthesis (Sequential)**
 1. Collect all subagent reports
-2. Calculate composite GEO Score (0-100). The Legal Compliance Score is reported separately and is not weighted into it
+2. Calculate composite GEO Score (0-100). The Legal Compliance Score and the AI Act status are reported separately and are not weighted into it
 3. Generate prioritized action plan
 4. Output client-ready report
 
@@ -120,7 +121,7 @@ Adjust recommendations based on detected type. Local businesses need LocalBusine
 
 ---
 
-## Sub-Skills (15 Specialized Components)
+## Sub-Skills (16 Specialized Components)
 
 | # | Skill | Directory | Purpose |
 |---|-------|-----------|---------|
@@ -139,10 +140,11 @@ Adjust recommendations based on detected type. Local businesses need LocalBusine
 | 13 | geo-compare | `skills/geo-compare/` | Monthly delta tracking and progress reports |
 | 14 | geo-update | `skills/geo-update/` | Pull latest updates from upstream repository |
 | 15 | geo-legal | `skills/geo-legal/` | Legal pre-check: Impressum, Datenschutzerklärung vs. detected tech, AGB |
+| 16 | geo-ai-act | `skills/geo-ai-act/` | EU AI Act Art. 50: AI image provenance, deep-fake labels, chatbot disclosure |
 
 ---
 
-## Subagents (5 Parallel Workers + 1 Final Check)
+## Subagents (5 Parallel Workers + 2 Final Checks)
 
 | Agent | File | Skills Used |
 |-------|------|-------------|
@@ -152,6 +154,7 @@ Adjust recommendations based on detected type. Local businesses need LocalBusine
 | geo-content | `agents/geo-content.md` | geo-content |
 | geo-schema | `agents/geo-schema.md` | geo-schema |
 | geo-legal (runs last) | `agents/geo-legal.md` | geo-legal |
+| geo-ai-act (runs last, parallel to geo-legal) | `agents/geo-ai-act.md` | geo-ai-act |
 
 ---
 
@@ -172,6 +175,7 @@ All commands generate structured output:
 | `/geo technical` | `GEO-TECHNICAL-AUDIT.md` |
 | `/geo content` | `GEO-CONTENT-ANALYSIS.md` |
 | `/geo legal` | `GEO-LEGAL-COMPLIANCE.md` |
+| `/geo ai-act` | `GEO-AI-ACT-CHECK.md` |
 | `/geo report` | `GEO-CLIENT-REPORT.md` (presentation-ready) |
 | `/geo report-pdf` | `GEO-REPORT.pdf` (professional PDF with charts) |
 | `/geo quick` | Inline summary (no file) |

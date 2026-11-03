@@ -28,9 +28,9 @@ sync (per `CONTRIBUTING.md`):
 | Path | Contents |
 |------|----------|
 | `geo/SKILL.md` | Orchestrator — routes `/geo` subcommands, detects business type, fans out and synthesizes the audit |
-| `skills/geo-*/` | 16 sub-skills (one `SKILL.md` each) — the reusable units and single-purpose subcommands |
-| `agents/geo-*.md` | 5 parallel subagents + `geo-legal`, which runs last, during a full audit |
-| `scripts/*.py` | Python analysis scripts (`fetch_page`, `citability_scorer`, `brand_scanner`, `llmstxt_generator`, `tech_detector`, `crm_dashboard`) |
+| `skills/geo-*/` | 17 sub-skills (one `SKILL.md` each) — the reusable units and single-purpose subcommands |
+| `agents/geo-*.md` | 5 parallel subagents + `geo-legal` and `geo-ai-act`, which run last, during a full audit |
+| `scripts/*.py` | Python analysis scripts (`fetch_page`, `citability_scorer`, `brand_scanner`, `llmstxt_generator`, `tech_detector`, `ai_content_scanner`, `crm_dashboard`) |
 | `scripts/webapp/` | Flask + HTMX CRM web UI (`app.py`) |
 | `schema/*.json` | JSON-LD schema templates by business type |
 | `templates/` | `geo-report-style.css` + `geo-report-template.html` for the PDF report |
@@ -51,8 +51,9 @@ Three layers — see `docs/architecture.md` for the full picture:
    slice (AI visibility, platform analysis, technical, content, schema) and writes a report section.
    Then **`geo-legal`** runs as the last analysis step, because it needs their technology findings. It checks the
    Impressum, the privacy policy (against `scripts/tech_detector.py`) and the AGB, and returns a
-   separate Legal Compliance Score that is **not** weighted into the GEO Score.
-3. **16 sub-skills** (`skills/geo-*/`) are the reusable units the subagents invoke and the targets
+   separate Legal Compliance Score that is **not** weighted into the GEO Score. In parallel, **`geo-ai-act`** checks EU AI Act Art. 50 transparency
+   (AI image provenance markers, deep-fake labels, chatbot disclosure) and returns a status, not a score.
+3. **17 sub-skills** (`skills/geo-*/`) are the reusable units the subagents invoke and the targets
    of single-purpose subcommands (`citability`, `crawlers`, `llmstxt`, …), plus the agency layer
    (`geo-prospect` CRM, `geo-proposal`, `geo-compare`, `geo-report-pdf`, `geo-update`).
 

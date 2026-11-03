@@ -1,6 +1,6 @@
 # Skills, Agents, Scripts, and Schemas
 
-This reference describes every moving part in the `geo-seo-claude` skill bundle. The bundle optimizes websites for Generative Engine Optimization (GEO) — making content discoverable and citable by AI search platforms (ChatGPT, Perplexity, Google AI Overviews, Gemini, Bing Copilot) — while maintaining traditional SEO foundations. It is structured as one orchestrator skill, 16 sub-skills, 5 parallel subagents plus a final legal compliance subagent, the Python helper scripts listed below, and 6 JSON-LD schema templates.
+This reference describes every moving part in the `geo-seo-claude` skill bundle. The bundle optimizes websites for Generative Engine Optimization (GEO) — making content discoverable and citable by AI search platforms (ChatGPT, Perplexity, Google AI Overviews, Gemini, Bing Copilot) — while maintaining traditional SEO foundations. It is structured as one orchestrator skill, 17 sub-skills, 5 parallel subagents plus two final legal subagents (`geo-legal`, `geo-ai-act`), the Python helper scripts listed below, and 6 JSON-LD schema templates.
 
 See [commands-reference.md](commands-reference.md) for the full slash-command reference and [architecture.md](architecture.md) for how the parallel subagent flow works during a full audit.
 
@@ -172,6 +172,20 @@ See [commands-reference.md](commands-reference.md) for `/geo legal`.
 
 ---
 
+### geo-ai-act
+
+**Purpose:** EU AI Act Article 50 transparency pre-check. Website operators are *deployers*: they must visibly disclose AI images, audio or video that are **deep fakes** (resembling real people, objects, places or events and falsely appearing authentic). They must also disclose AI chatbots and AI-written public-interest text. Machine-readable marking is the AI vendor's (*provider's*) duty. The skill finds AI images via surviving provenance metadata, checks for visible labels next to them, and judges the deep-fake question per AI image by looking at it.
+
+**Inputs:** A URL and up to 10 image-heavy pages. During `/geo audit`, also the crawl set and any chat widgets found.
+
+**Outputs:** `GEO-AI-ACT-CHECK.md` (standalone) or the "EU AI Act Transparency" section of `GEO-AUDIT-REPORT.md`. It contains a disclaimer, a status (✅ / ⚠️ / ❔, no score), what Art. 50 requires for this site, a legal baseline table, an AI image table with markers, labels and deep-fake verdicts, a chatbot and AI-text assessment, and a "Needs Review" list.
+
+**Dependencies:** `scripts/ai_content_scanner.py`. The procedure lives in `agents/geo-ai-act.md`.
+
+See [commands-reference.md](commands-reference.md) for `/geo ai-act`.
+
+---
+
 ### geo-report
 
 **Purpose:** Aggregates outputs from all audit sub-skills into a single client-facing deliverable written for business owners, not developers — technical findings are translated into business impact and dollar-value framing.
@@ -340,6 +354,22 @@ These five agents run simultaneously during a `/geo audit` to reduce total runti
 
 ---
 
+### geo-ai-act
+
+**File:** `agents/geo-ai-act.md`
+
+**Role:** EU AI Act transparency analyst (Art. 50).
+
+**Dispatched when:** Phase 2b, in parallel with `geo-legal`, after the five parallel subagents finish.
+
+**What it does:** Verifies the current Art. 50 rules and dates online (application from 2 Aug 2026, the transition for machine-readable marking, the Code of Practice). It determines the site's role (deployer / chatbot provider), then runs `ai_content_scanner.py` on up to 10 pages. For each AI-marked image without a label, it opens the image and applies the three deep-fake criteria. It also checks label visibility (alt text alone is not enough), chatbot disclosure, and whether AI-written public-interest text needs labelling. It never infers AI origin from style alone.
+
+**Returns:** A status (✅ no deficiencies found in the checked points / ⚠️ action needed / ❔ not verifiable) and findings tagged `[AI Act]`. It has no score and is not weighted into the GEO Score.
+
+**Sub-skill used:** geo-ai-act.
+
+---
+
 ## Python Scripts
 
 | Script | Purpose | Used by |
@@ -350,6 +380,7 @@ These five agents run simultaneously during a `/geo audit` to reduce total runti
 | `scripts/llmstxt_generator.py` | Validates an existing `llms.txt` against the spec (H1 title, blockquote description, H2 sections, absolute URLs, descriptions) and generates a new file from site crawl data. | geo-llmstxt |
 | `scripts/generate_pdf_report.py` | Generates a multi-page PDF from a JSON audit data file using ReportLab. Renders score gauges, bar charts, color-coded tables, and an action plan. Accepts the JSON file path as a CLI argument or via stdin. Requires `reportlab`. | geo-report-pdf |
 | `scripts/tech_detector.py` | Detects the platform/CMS, consent manager and third-party services (analytics, ad pixels, tag managers, fonts, embeds, payment, reviews, chat, newsletter, CDNs) from the HTML, inline scripts and headers. With `--browser`, it loads the page in headless Chromium **without consenting** and records third-party requests and cookies that fire before consent. Each service carries a consent-need and third-country flag. | geo-legal |
+| `scripts/ai_content_scanner.py` | Scans pages for AI-generated images and AI chat widgets. Reads provenance metadata from each image: C2PA / Content Credentials manifests, IPTC `DigitalSourceType` (`trainedAlgorithmicMedia` etc.), and generator names in EXIF/XMP/PNG text chunks. Checks for a visible label at the image (alt, title, figcaption, its own wrapper) or a page-wide notice, and classifies each image (`ai_marked_labelled`, `ai_marked_unlabelled`, `no_signal`, …). It cannot see stripped metadata, invisible watermarks or AI-written text. | geo-ai-act |
 | `scripts/crm_dashboard.py` | Renders a rich terminal dashboard for the prospect CRM. Reads `~/.geo-prospects/prospects.json` and displays pipeline stages, MRR, and prospect detail views. Requires `rich`. | geo-prospect |
 
 ---
