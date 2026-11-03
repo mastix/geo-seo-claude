@@ -71,7 +71,9 @@ Per image the scanner reports:
 | `no_signal` | No marker, no label | **Unknown.** Metadata is often stripped. Never report "not AI" |
 | `not_scanned` | Fetch failed | ❔ |
 
-Marker strength: `strong` = C2PA manifest, IPTC `trainedAlgorithmicMedia` / `compositeWithTrainedAlgorithmicMedia`, or diffusion parameters in PNG chunks. `medium` = an AI tool named in descriptive metadata (CreatorTool, Software, Credit, Description).
+Marker strength: `strong` = C2PA manifest, IPTC `trainedAlgorithmicMedia` / `compositeWithTrainedAlgorithmicMedia`, or diffusion parameters in PNG chunks. `medium` = an AI tool named in descriptive metadata (CreatorTool, Software, Credit, Description), or a file name that follows a generator's export pattern (`freepik__…__123.png`, `DALL·E 2024-…`, `Gemini_Generated_Image_…`). A file name is weak evidence: say so in the verdict and recommend confirming with the operator.
+
+The scanner reads `<picture><source>` URLs. When a CDN rendition (`?w=…&fm=…`) has no marker, it also checks the original file (`original_src`, `scanned: original`), because renditions are re-encoded and lose C2PA/XMP. If many images still show `no_signal` on a CDN-heavy site, check a few originals by hand.
 
 ## Step 4: Deep-fake test and label quality
 

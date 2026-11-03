@@ -32,7 +32,7 @@ import json
 import re
 import sys
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 try:
     import requests
@@ -119,7 +119,9 @@ def scan_image_bytes(data: bytes) -> dict:
         info["c2pa"] = True
         signals.append({"type": "c2pa_manifest", "strength": "strong",
                         "detail": "C2PA / Content Credentials manifest present"})
-        gen = re.search(rb"claim_generator[^A-Za-z0-9]{1,8}([ -~]{3,80})", data)
+        gen = re.search(rb"claim_generator(?!_info)[^A-Za-z0-9_]{1,8}([ -~]{3,80})", data)
+        if not gen:  # C2PA 2.x: claim_generator_info { name: ... }
+            gen = re.search(rb"claim_generator_info.{0,40}?name[^A-Za-z0-9]{1,8}([ -~]{3,80})", data, re.S)
         if gen:
             info["generator_hints"].append(gen.group(1).decode("ascii", "ignore").strip())
 
@@ -196,16 +198,74 @@ def scan_image_bytes(data: bytes) -> dict:
 # ---------------------------------------------------------------------------
 # HTML analysis
 # ---------------------------------------------------------------------------
+def _last_srcset_url(srcset: str):
+    last = (srcset or "").split(",")[-1].strip().split(" ")[0]
+    return last if last and not last.startswith("data:") else None
+
+
 def _best_src(img, base: str):
     for attr in ("src", "data-src", "data-lazy-src", "data-original"):
         val = img.get(attr)
         if val and not val.startswith("data:"):
             return urljoin(base, val.strip())
-    srcset = img.get("srcset") or img.get("data-srcset")
-    if srcset:
-        last = srcset.split(",")[-1].strip().split(" ")[0]
+    for attr in ("srcset", "data-srcset"):
+        last = _last_srcset_url(img.get(attr))
         if last:
             return urljoin(base, last)
+    return None
+
+
+def _picture_sources(img, base: str) -> list:
+    """URLs offered by <source> elements of the <picture> wrapping this <img>."""
+    pic = img.find_parent("picture")
+    if pic is None:
+        return []
+    urls = []
+    for source in pic.find_all("source"):
+        for attr in ("srcset", "data-srcset"):
+            last = _last_srcset_url(source.get(attr))
+            if last:
+                urls.append(urljoin(base, last))
+                break
+    return urls
+
+
+# Query parameters used by image CDNs for resized renditions (Contentful, imgix,
+# Cloudinary-style, Shopify, WordPress Photon, Next/Gatsby image services ...).
+CDN_TRANSFORM_PARAMS = {"w", "h", "width", "height", "fm", "format", "q", "quality", "fit",
+                        "auto", "dpr", "crop", "resize", "fl", "f", "ar", "rect", "v", "ts"}
+
+
+def original_url(src: str):
+    """URL of the untransformed original if src looks like a CDN rendition, else None.
+
+    Renditions are usually re-encoded and lose C2PA/XMP metadata; the original often keeps it.
+    """
+    parsed = urlparse(src)
+    if not parsed.query:
+        return None
+    keys = {kv.split("=", 1)[0].lower() for kv in parsed.query.split("&") if kv}
+    if keys and keys <= CDN_TRANSFORM_PARAMS and keys & {"w", "h", "width", "height", "fm", "format", "q", "quality", "fit"}:
+        return parsed._replace(query="").geturl()
+    return None
+
+
+# Default export names of AI image generators. Weak evidence: it shows how the
+# operator obtained the file, but names can be changed or reused.
+AI_FILENAME_RE = re.compile(
+    r"(^|/)freepik__[^/]*__\d+\.|dall[\s·_-]?e[\s_-]?\d{4}|chatgpt[\s_-]image|gemini_generated_image|"
+    r"(^|/)firefly[\s_-]|midjourney|(^|/)mj[_-]|leonardo[_-]|ideogram[_-]|stable[\s_-]?diffusion|"
+    r"(^|/)(sd|sdxl|flux)[_-]\d|_generated_image",
+    re.I,
+)
+
+
+def filename_signal(src: str):
+    name = urlparse(src).path.rsplit("/", 1)[-1]
+    name = unquote(name)
+    if AI_FILENAME_RE.search("/" + name):
+        return {"type": "filename", "strength": "medium",
+                "detail": f"file name follows an AI generator export pattern: {name[:80]}"}
     return None
 
 
@@ -296,17 +356,23 @@ def scan_page(url: str, max_images: int = 15, delay: float = 1.0, timeout: int =
 
     seen = set()
     candidates = []
-    for img in soup.find_all("img"):
-        src = _best_src(img, base)
+    def _add(src, img):
         if not src or src in seen or urlparse(src).path.lower().endswith(SKIP_EXT):
-            continue
-        seen.add(src)
+            return
+        # Different renditions of the same asset count once (same path, other query).
+        key = original_url(src) or src
+        if key in seen:
+            return
+        seen.update({src, key})
         candidates.append((src, img))
+
+    for img in soup.find_all("img"):
+        _add(_best_src(img, base), img)
+        for src in _picture_sources(img, base):
+            _add(src, img)
     og = soup.find("meta", attrs={"property": "og:image"})
     if og and og.get("content"):
-        src = urljoin(base, og["content"])
-        if src not in seen:
-            candidates.append((src, None))
+        _add(urljoin(base, og["content"]), None)
 
     for src, img in candidates[:max_images]:
         entry = {"src": src, "alt": (img.get("alt") if img is not None else None),
@@ -317,10 +383,28 @@ def scan_page(url: str, max_images: int = 15, delay: float = 1.0, timeout: int =
                 time.sleep(delay)
             data = fetch_bytes(src, timeout)
             meta = scan_image_bytes(data)
+            orig = original_url(src)
+            if meta["ai_signal"] == "none" and orig:
+                # CDN renditions usually lose metadata; check the original file too.
+                entry["original_src"] = orig
+                try:
+                    if delay:
+                        time.sleep(delay)
+                    orig_meta = scan_image_bytes(fetch_bytes(orig, timeout))
+                    entry["scanned"] = "original"
+                    if orig_meta["ai_signal"] != "none":
+                        meta = orig_meta
+                except requests.RequestException as exc:
+                    entry["original_error"] = str(exc)
             entry.update({k: meta[k] for k in ("format", "ai_signal", "signals", "generator_hints",
                                                 "digital_source_type", "c2pa", "created")})
         except requests.RequestException as exc:
             entry.update({"ai_signal": "unknown", "signals": [], "error": str(exc)})
+        fn = filename_signal(src)
+        if fn:
+            entry.setdefault("signals", []).append(fn)
+            if entry.get("ai_signal") in ("none", "unknown", None):
+                entry["ai_signal"] = "medium"
         entry["status"] = classify(entry, bool(page["page_notice"]))
         page["images"].append(entry)
     if len(candidates) > max_images:
@@ -359,7 +443,8 @@ def scan(urls: list, max_images: int = 15, delay: float = 1.0, timeout: int = 30
             "chat_widgets": sorted({w for p in pages for w in p["chat_widgets"]}),
         },
         "limitations": [
-            "Only embedded provenance metadata and visible labels are checked; many CMSs/CDNs strip metadata.",
+            "Only embedded provenance metadata, generator file names and visible labels are checked; many CMSs/CDNs strip metadata (originals are checked when a CDN rendition has none).",
+            "A file-name match is weak evidence (export name of a generator) and should be confirmed with the operator.",
             "'no_signal' does not mean the image is not AI-generated.",
             "Invisible watermarks (e.g. SynthID) and AI-written text are not detected.",
             "Whether an image is a 'deep fake' (Art. 3(60) AI Act) needs human/visual judgement.",

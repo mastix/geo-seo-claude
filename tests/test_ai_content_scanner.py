@@ -150,3 +150,51 @@ class TestFalsePositives:
         info = scan_image_bytes(_jpeg(xmp))
         assert info["ai_signal"] == "medium"
         assert any("firefly" in h.lower() for h in info["generator_hints"])
+
+
+class TestRenditionsAndPicture:
+    def test_original_url_for_cdn_renditions(self):
+        from ai_content_scanner import original_url
+        assert original_url("https://images.ctfassets.net/x/y/z/a.webp?w=456&fm=webp") == \
+            "https://images.ctfassets.net/x/y/z/a.webp"
+        assert original_url("https://ex.de/a.jpg") is None
+        assert original_url("https://ex.de/a.jpg?id=5") is None  # not a transform
+
+    def test_filename_signal(self):
+        from ai_content_scanner import filename_signal
+        assert filename_signal("https://cdn.ex/freepik__drone-shot-of-a-stadium__55656.png")
+        assert filename_signal("https://cdn.ex/Gemini_Generated_Image_abc123.png")
+        assert filename_signal("https://cdn.ex/DALL%C2%B7E%202025-01-02%2010.00.00.webp")
+        assert filename_signal("https://cdn.ex/team-photo-2024.jpg") is None
+
+    def test_picture_source_and_original_fallback(self):
+        html = """<html><body><picture>
+          <source type="image/webp" srcset="https://cdn.ex/a/emblem.webp?w=200&fm=webp 200w, https://cdn.ex/a/emblem.webp?w=456&fm=webp 456w">
+          <img src="data:image/gif;base64,R0lGOD" alt="Sportabzeichen"></picture></body></html>"""
+        bodies = {
+            "https://club.ex/": html.encode(),
+            "https://cdn.ex/a/emblem.webp?w=456&fm=webp": _jpeg(),       # rendition: metadata stripped
+            "https://cdn.ex/a/emblem.webp": _jpeg(XMP_AI),               # original keeps IPTC marker
+        }
+
+        def fake_get(url, **kw):
+            r = MagicMock(status_code=200, url=url)
+            r.text = bodies[url].decode() if url.endswith("/") else ""
+            r.iter_content.return_value = [bodies[url]]
+            return r
+
+        with patch.object(acs.requests, "get", side_effect=fake_get):
+            page = scan_page("https://club.ex/", delay=0)
+        assert len(page["images"]) == 1
+        img = page["images"][0]
+        assert img["ai_signal"] == "strong"
+        assert img["scanned"] == "original"
+        assert img["status"] == "ai_marked_unlabelled"
+
+
+class TestC2paGeneratorName:
+    def test_claim_generator_info_name_is_used(self):
+        data = _jpeg() + b"jumb..jumdc2pa..claim_generator_info\xa1dname\x6bChatGPT_Img..."
+        info = scan_image_bytes(data)
+        assert info["c2pa"] is True
+        assert "info" not in info["generator_hints"]
