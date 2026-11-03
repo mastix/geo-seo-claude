@@ -34,7 +34,7 @@ Yes, but you must use Git Bash, not PowerShell or Command Prompt. The Windows in
 
 ### What does `install.sh` actually do?
 
-It checks for Git, Python 3.10+, and Claude Code CLI, then copies files into your Claude configuration directory (`~/.claude/`). Specifically: the main skill goes to `~/.claude/skills/geo/`, each of the 13 sub-skills goes to `~/.claude/skills/geo-<name>/`, and the 5 agent files go to `~/.claude/agents/`. It then installs Python dependencies from `requirements.txt` using `pip install --user`. If you run it interactively, it also offers to install the Playwright Chromium browser for screenshot support. The installer works both from a cloned local directory and via a `curl | bash` pipe from the repository URL.
+It checks for Git, Python 3.10+, and Claude Code CLI, then copies files into your Claude configuration directory (`~/.claude/`). Specifically: the main skill goes to `~/.claude/skills/geo/`, each of the 16 sub-skills goes to `~/.claude/skills/geo-<name>/`, and the 6 agent files go to `~/.claude/agents/`. It then installs Python dependencies from `requirements.txt` using `pip install --user`. If you run it interactively, it also offers to install the Playwright Chromium browser for screenshot support. The installer works both from a cloned local directory and via a `curl | bash` pipe from the repository URL.
 
 ### Do I need Playwright?
 
@@ -46,7 +46,7 @@ Playwright is optional. The installer prompts you to install it (`python3 -m pla
 
 ### What is the difference between `/geo quick` and `/geo audit`?
 
-`/geo quick` produces a 60-second inline visibility snapshot and writes no output file. It is useful for a fast read on a URL before committing to a full run. `/geo audit` is the full workflow: it fetches the site, detects the business type, launches 5 parallel subagents, aggregates scores across all categories, and writes a `GEO-AUDIT-REPORT.md` with a prioritized action plan. See [commands-reference.md](commands-reference.md) for the complete command list.
+`/geo quick` produces a 60-second inline visibility snapshot and writes no output file. It is useful for a fast read on a URL before committing to a full run. `/geo audit` is the full workflow: it fetches the site, detects the business type, launches 5 parallel subagents, runs the legal compliance check, aggregates scores across all categories, and writes a `GEO-AUDIT-REPORT.md` with a prioritized action plan. See [commands-reference.md](commands-reference.md) for the complete command list.
 
 ### Where does the composite GEO Score come from?
 
@@ -54,7 +54,7 @@ The score (0-100) is a weighted aggregate across six categories: AI Citability &
 
 ### How do the parallel subagents work?
 
-During a full audit, five subagents run simultaneously after the initial discovery phase: `geo-ai-visibility`, `geo-platform-analysis`, `geo-technical`, `geo-content`, and `geo-schema`. Each maps to an agent definition file in `~/.claude/agents/` and is responsible for a distinct slice of the analysis. Claude Code's agent system handles the parallel dispatch; the orchestrator then collects all five reports and synthesizes the composite score. See [architecture.md](architecture.md) for the full flow.
+During a full audit, five subagents run simultaneously after the initial discovery phase: `geo-ai-visibility`, `geo-platform-analysis`, `geo-technical`, `geo-content`, and `geo-schema`. Each maps to an agent definition file in `~/.claude/agents/` and is responsible for a distinct slice of the analysis. Claude Code's agent system handles the parallel dispatch; the orchestrator then collects all five reports. A sixth agent, `geo-legal`, runs after them because it needs their technology findings, and the orchestrator then synthesizes the composite score. See [architecture.md](architecture.md) for the full flow.
 
 ### Where is prospect, proposal, and report data stored?
 
@@ -88,6 +88,10 @@ Open an issue on GitHub. For bugs, include a clear description, the URL you were
 ---
 
 ## Limitations
+
+### Is the legal compliance check legal advice?
+
+No. `/geo legal` and the legal step of `/geo audit` are an automated pre-check of publicly visible pages: Impressum, Datenschutzerklärung and AGB, compared with the technologies the site actually loads. The agent verifies the current legal baseline against primary sources on every run, but it cannot see facts like employee count or contracts, and it never places orders. Findings marked ❔ need a manual check. Have a qualified lawyer review the legal texts before relying on them.
 
 ### Can this tool guarantee AI citations or rankings?
 

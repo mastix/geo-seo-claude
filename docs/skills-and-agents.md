@@ -1,6 +1,6 @@
 # Skills, Agents, Scripts, and Schemas
 
-This reference describes every moving part in the `geo-seo-claude` skill bundle. The bundle optimizes websites for Generative Engine Optimization (GEO) — making content discoverable and citable by AI search platforms (ChatGPT, Perplexity, Google AI Overviews, Gemini, Bing Copilot) — while maintaining traditional SEO foundations. It is structured as one orchestrator skill, 14 sub-skills, 5 parallel subagents, 6 Python helper scripts, and 6 JSON-LD schema templates.
+This reference describes every moving part in the `geo-seo-claude` skill bundle. The bundle optimizes websites for Generative Engine Optimization (GEO) — making content discoverable and citable by AI search platforms (ChatGPT, Perplexity, Google AI Overviews, Gemini, Bing Copilot) — while maintaining traditional SEO foundations. It is structured as one orchestrator skill, 16 sub-skills, 5 parallel subagents plus a final legal compliance subagent, the Python helper scripts listed below, and 6 JSON-LD schema templates.
 
 See [commands-reference.md](commands-reference.md) for the full slash-command reference and [architecture.md](architecture.md) for how the parallel subagent flow works during a full audit.
 
@@ -16,7 +16,7 @@ See [commands-reference.md](commands-reference.md) for the full slash-command re
 
 ### geo-audit
 
-**Purpose:** Orchestrates a full GEO + SEO audit of a website by running discovery, delegating to five parallel subagents, and aggregating their scores into a single composite GEO Score.
+**Purpose:** Orchestrates a full GEO + SEO audit of a website by running discovery, delegating to five parallel subagents, running the `geo-legal` compliance check as the last analysis step, and aggregating the scores into a single composite GEO Score (plus a separate Legal Compliance Score).
 
 **Inputs:** A URL. Optionally, pre-crawled page data.
 
@@ -25,7 +25,7 @@ See [commands-reference.md](commands-reference.md) for the full slash-command re
 **Scoring weights:**
 - AI Citability 25%, Brand Authority 20%, Content E-E-A-T 20%, Technical GEO 15%, Structured Data 10%, Platform Optimization 10%
 
-**Dependencies:** Delegates to all five subagents (`geo-ai-visibility`, `geo-platform-analysis`, `geo-technical`, `geo-content`, `geo-schema`).
+**Dependencies:** Delegates to all five parallel subagents (`geo-ai-visibility`, `geo-platform-analysis`, `geo-technical`, `geo-content`, `geo-schema`), then to `geo-legal`.
 
 See [commands-reference.md](commands-reference.md) for `/geo audit`.
 
@@ -153,6 +153,22 @@ See [commands-reference.md](commands-reference.md) for `/geo technical`.
 **Score modifiers:** Topical authority adds +10 to −5 points on top of the base 100-point E-E-A-T score.
 
 See [commands-reference.md](commands-reference.md) for `/geo content`.
+
+---
+
+### geo-legal
+
+**Purpose:** Automated legal pre-check for DE/AT/CH + EU sites. It first verifies the current legal baseline against primary sources (gesetze-im-internet.de, EUR-Lex, supervisory authorities), because the rules change often. It then checks the Impressum, the Datenschutzerklärung and the AGB (if present). The privacy policy is cross-checked against every technology the site actually loads, including what fires before cookie consent.
+
+**Inputs:** A URL and the business type. During `/geo audit`, also the technology context found by the parallel subagents.
+
+**Outputs:** `GEO-LEGAL-COMPLIANCE.md` (standalone) or the "Legal Compliance" section of `GEO-AUDIT-REPORT.md`. It contains a not-legal-advice disclaimer, the Legal Compliance Score (0–100), a legal baseline verification table, a technology inventory, Impressum / privacy policy / AGB findings with verbatim quotes and suggested fixes, and a "Needs Legal Review" list.
+
+**Scoring components:** Impressum 30, privacy policy Art. 13 completeness 15, technology coverage 15, consent implementation 10, AGB & consumer information 20, other mandatory information 10. The score is not weighted into the GEO Score.
+
+**Dependencies:** `scripts/tech_detector.py` (technology inventory; `--browser` uses Playwright to record pre-consent requests). The procedure lives in `agents/geo-legal.md`.
+
+See [commands-reference.md](commands-reference.md) for `/geo legal`.
 
 ---
 
@@ -308,6 +324,22 @@ These five agents run simultaneously during a `/geo audit` to reduce total runti
 
 ---
 
+### geo-legal
+
+**File:** `agents/geo-legal.md`
+
+**Role:** Legal compliance analyst (DE/AT/CH + EU).
+
+**Dispatched when:** After all five Phase 2 subagents have finished (sequential, last analysis step). It needs their technology findings.
+
+**What it does:** Verifies the legal baseline online (Impressum: § 5 DDG; privacy: GDPR Art. 13, § 25 TDDDG; consumer law: BGB/EGBGB, PAngV, the withdrawal function under Directive (EU) 2023/2673, and others). It finds the legal pages and checks their reachability, and builds a technology inventory with `tech_detector.py --browser`. It then checks the Impressum elements, matches every detected service against the privacy policy, judges consent behaviour before opt-in, and reviews AGB clauses. It is read-only: it never orders, submits forms or accepts banners.
+
+**Returns:** Legal Compliance Score (0–100, reported separately from the GEO Score) and findings mapped to Critical / High / Medium / Low, tagged `[Legal]` in the audit report.
+
+**Sub-skill used:** geo-legal.
+
+---
+
 ## Python Scripts
 
 | Script | Purpose | Used by |
@@ -317,6 +349,7 @@ These five agents run simultaneously during a `/geo audit` to reduce total runti
 | `scripts/brand_scanner.py` | Checks brand presence across AI-cited platforms (YouTube, Reddit, Wikipedia, LinkedIn). Provides per-platform check functions and instructions for WebFetch-based verification. Requires `requests` and `beautifulsoup4`. | geo-brand-mentions |
 | `scripts/llmstxt_generator.py` | Validates an existing `llms.txt` against the spec (H1 title, blockquote description, H2 sections, absolute URLs, descriptions) and generates a new file from site crawl data. | geo-llmstxt |
 | `scripts/generate_pdf_report.py` | Generates a multi-page PDF from a JSON audit data file using ReportLab. Renders score gauges, bar charts, color-coded tables, and an action plan. Accepts the JSON file path as a CLI argument or via stdin. Requires `reportlab`. | geo-report-pdf |
+| `scripts/tech_detector.py` | Detects the platform/CMS, consent manager and third-party services (analytics, ad pixels, tag managers, fonts, embeds, payment, reviews, chat, newsletter, CDNs) from the HTML, inline scripts and headers. With `--browser`, it loads the page in headless Chromium **without consenting** and records third-party requests and cookies that fire before consent. Each service carries a consent-need and third-country flag. | geo-legal |
 | `scripts/crm_dashboard.py` | Renders a rich terminal dashboard for the prospect CRM. Reads `~/.geo-prospects/prospects.json` and displays pipeline stages, MRR, and prospect detail views. Requires `rich`. | geo-prospect |
 
 ---

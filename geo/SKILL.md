@@ -8,7 +8,7 @@ description: >
   optimization, schema markup, technical SEO, content quality (E-E-A-T), and
   client-ready GEO report generation. Use when user says "geo", "seo", "audit",
   "AI search", "AI visibility", "optimize", "citability", "llms.txt", "schema",
-  "brand mentions", "GEO report", or any URL for analysis.
+  "brand mentions", "GEO report", "Impressum", "Datenschutz", "AGB", or any URL for analysis.
 allowed-tools: Read, Grep, Glob, Bash, WebFetch, Write
 ---
 
@@ -33,6 +33,7 @@ allowed-tools: Read, Grep, Glob, Bash, WebFetch, Write
 | `/geo schema <url>` | Detect, validate, and generate structured data |
 | `/geo technical <url>` | Traditional technical SEO audit |
 | `/geo content <url>` | Content quality and E-E-A-T assessment |
+| `/geo legal <url>` | Legal pre-check: Impressum, privacy policy vs. detected tech, AGB (DE/AT/CH + EU) |
 | `/geo report <url>` | Generate client-ready GEO deliverable |
 | `/geo report-pdf <url>` | Generate professional PDF report with charts and scores |
 | `/geo quick <url>` | 60-second GEO visibility snapshot |
@@ -80,9 +81,12 @@ Launch these 5 subagents simultaneously:
 | geo-content | `agents/geo-content.md` | Content quality, E-E-A-T, readability, AI content detection |
 | geo-schema | `agents/geo-schema.md` | Schema markup detection, validation, generation |
 
+**Phase 2b: Legal Compliance (Sequential, last analysis step)**
+After all five subagents finish, launch `geo-legal` (`agents/geo-legal.md`) and pass it the technology context they found (platform, third-party services, embeds, payment methods). It verifies the current legal baseline, then checks the Impressum, the Datenschutzerklärung against the detected technologies (`scripts/tech_detector.py`), and the AGB if present.
+
 **Phase 3: Synthesis (Sequential)**
 1. Collect all subagent reports
-2. Calculate composite GEO Score (0-100)
+2. Calculate composite GEO Score (0-100). The Legal Compliance Score is reported separately and is not weighted into it
 3. Generate prioritized action plan
 4. Output client-ready report
 
@@ -116,7 +120,7 @@ Adjust recommendations based on detected type. Local businesses need LocalBusine
 
 ---
 
-## Sub-Skills (14 Specialized Components)
+## Sub-Skills (15 Specialized Components)
 
 | # | Skill | Directory | Purpose |
 |---|-------|-----------|---------|
@@ -134,10 +138,11 @@ Adjust recommendations based on detected type. Local businesses need LocalBusine
 | 12 | geo-proposal | `skills/geo-proposal/` | Auto-generate client proposals from audit data |
 | 13 | geo-compare | `skills/geo-compare/` | Monthly delta tracking and progress reports |
 | 14 | geo-update | `skills/geo-update/` | Pull latest updates from upstream repository |
+| 15 | geo-legal | `skills/geo-legal/` | Legal pre-check: Impressum, Datenschutzerklärung vs. detected tech, AGB |
 
 ---
 
-## Subagents (5 Parallel Workers)
+## Subagents (5 Parallel Workers + 1 Final Check)
 
 | Agent | File | Skills Used |
 |-------|------|-------------|
@@ -146,6 +151,7 @@ Adjust recommendations based on detected type. Local businesses need LocalBusine
 | geo-technical | `agents/geo-technical.md` | geo-technical |
 | geo-content | `agents/geo-content.md` | geo-content |
 | geo-schema | `agents/geo-schema.md` | geo-schema |
+| geo-legal (runs last) | `agents/geo-legal.md` | geo-legal |
 
 ---
 
@@ -165,6 +171,7 @@ All commands generate structured output:
 | `/geo schema` | `GEO-SCHEMA-REPORT.md` + generated JSON-LD |
 | `/geo technical` | `GEO-TECHNICAL-AUDIT.md` |
 | `/geo content` | `GEO-CONTENT-ANALYSIS.md` |
+| `/geo legal` | `GEO-LEGAL-COMPLIANCE.md` |
 | `/geo report` | `GEO-CLIENT-REPORT.md` (presentation-ready) |
 | `/geo report-pdf` | `GEO-REPORT.pdf` (professional PDF with charts) |
 | `/geo quick` | Inline summary (no file) |

@@ -52,8 +52,8 @@ Right-click the cloned folder and choose "Open Git Bash here", or navigate to it
 ### What the installer does
 
 - Copies the `geo` orchestrator skill to `~/.claude/skills/geo/`
-- Copies 13 sub-skills to `~/.claude/skills/geo-*/`
-- Copies 5 subagent definitions to `~/.claude/agents/`
+- Copies 16 sub-skills to `~/.claude/skills/geo-*/`
+- Copies 6 subagent definitions to `~/.claude/agents/`
 - Installs Python dependencies via `pip install --user`
 - Optionally installs the Playwright Chromium browser for screenshots
 
@@ -95,7 +95,7 @@ Returns a high-level GEO visibility score and the top issues. Good for a first l
 /geo audit https://yoursite.com
 ```
 
-Launches 5 parallel subagents covering AI visibility, platform optimization, technical SEO, content quality, and structured data. Produces a prioritized action plan with a composite GEO score (0–100).
+Launches 5 parallel subagents covering AI visibility, platform optimization, technical SEO, content quality, and structured data, then runs a legal compliance check (Impressum, privacy policy, AGB). Produces a prioritized action plan with a composite GEO score (0–100) and a separate Legal Compliance Score.
 
 The full audit takes several minutes depending on the site. See [scoring-methodology.md](scoring-methodology.md) for how the score is calculated and [commands-reference.md](commands-reference.md) for all available commands.
 

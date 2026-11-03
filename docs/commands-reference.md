@@ -25,6 +25,7 @@ This file documents every command in the `geo-seo-claude` skill bundle. Commands
 | `/geo schema <url>` | Detect, validate, and generate Schema.org structured data |
 | `/geo technical <url>` | Technical SEO audit with GEO-specific checks |
 | `/geo content <url>` | Content quality and E-E-A-T assessment |
+| `/geo legal <url>` | Legal pre-check: Impressum, privacy policy vs. detected tech, AGB (DE/AT/CH + EU) |
 
 **Reports** — client-ready deliverables
 
@@ -45,7 +46,7 @@ This file documents every command in the `geo-seo-claude` skill bundle. Commands
 
 ## /geo audit
 
-Performs a comprehensive GEO + SEO audit of a website using five parallel subagents.
+Performs a comprehensive GEO + SEO audit of a website using five parallel subagents, followed by a legal compliance check.
 
 **Usage**
 
@@ -57,7 +58,8 @@ Performs a comprehensive GEO + SEO audit of a website using five parallel subage
 
 - Phase 1 (sequential): fetches the homepage, detects business type (SaaS, Local, E-commerce, Publisher, Agency), and crawls up to 50 pages from the sitemap or internal links.
 - Phase 2 (parallel): delegates to five specialized subagents simultaneously — AI visibility, platform analysis, technical SEO, content E-E-A-T, and schema markup. See [architecture.md](architecture.md) for the subagent flow.
-- Phase 3 (sequential): aggregates subagent scores into a weighted composite GEO Score (0–100). See [scoring-methodology.md](scoring-methodology.md) for the weighting formula.
+- Phase 2b (sequential): runs the `geo-legal` subagent last, passing it the technology findings of Phase 2. See [/geo legal](#geo-legal).
+- Phase 3 (sequential): aggregates subagent scores into a weighted composite GEO Score (0–100). The Legal Compliance Score is reported next to it but not weighted in. See [scoring-methodology.md](scoring-methodology.md) for the weighting formula.
 - Classifies every issue by severity: Critical, High, Medium, or Low.
 - Produces a 30-day action plan with weekly themes.
 
@@ -381,6 +383,43 @@ Writes `GEO-CONTENT-ANALYSIS.md`. Contains: content score (0–100), E-E-A-T bre
 **When to use it**
 
 Use this when a site has good technical fundamentals but is not being cited by AI systems, indicating a content quality problem.
+
+---
+
+## /geo legal
+
+Runs an automated legal pre-check of the site's Impressum, Datenschutzerklärung and AGB against current DE/AT/CH and EU law and against the technologies the site actually uses. Not legal advice.
+
+**Usage**
+
+```
+/geo legal https://example.com
+```
+
+**What it does**
+
+- Verifies the current legal baseline against primary sources (gesetze-im-internet.de, EUR-Lex, supervisory authorities) before checking anything. It records each rule with its status and source, and warns prominently if verification was not possible.
+- Determines the jurisdiction (TLD, language, address, currency) and locates the legal pages. It checks that the Impressum and Datenschutz links are reachable from every sampled page.
+- Builds a technology inventory with `scripts/tech_detector.py --browser`, which loads the page without consenting and records the third-party requests and cookies that fire before consent.
+- **Impressum:** checks the mandatory elements (§ 5 DDG / § 5 ECG / Art. 3 UWG): name and legal form, address for service, representatives, a second fast contact channel, register, VAT ID, VSBG statement, and § 18 MStV for editorial content. It also flags outdated references (TMG, TTDSG, the ODR link).
+- **Datenschutzerklärung:** checks Art. 13 GDPR completeness and a coverage matrix that compares each detected service with the policy text (used but not mentioned → High/Critical). It also checks consent behaviour under § 25 TDDDG.
+- **AGB** (if present): looks for void or risky B2C clauses (warranty, liability, transport risk, jurisdiction), checks contract-formation information, withdrawal rules and the withdrawal function, and checks subscriptions for the cancellation button.
+- Lightly checks other mandatory e-commerce information where relevant: unit prices (PAngV), food information (LMIV), GPSR, the accessibility statement (BFSG).
+- Read-only: never places orders, submits forms or accepts cookie banners.
+
+**Inputs**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<url>` | Yes | Homepage URL of the site |
+
+**Output**
+
+Writes `GEO-LEGAL-COMPLIANCE.md`. It contains a disclaimer, the Legal Compliance Score (0–100) with breakdown, a legal baseline verification table, a technology inventory, the Impressum / privacy policy / AGB findings with verbatim quotes and suggested wording, a "Needs Legal Review" list and prioritized actions. During `/geo audit` the same content becomes the "Legal Compliance" section of `GEO-AUDIT-REPORT.md`.
+
+**When to use it**
+
+Before a relaunch or go-live, after adding new tracking or marketing tools, or as part of a client audit for DACH/EU sites. Have a lawyer review any findings before acting on them.
 
 ---
 

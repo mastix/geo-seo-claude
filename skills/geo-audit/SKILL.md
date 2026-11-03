@@ -1,6 +1,6 @@
 ---
 name: geo-audit
-description: Full website GEO+SEO audit with parallel subagent delegation. Orchestrates a comprehensive Generative Engine Optimization audit across AI citability, platform analysis, technical infrastructure, content quality, and schema markup. Produces a composite GEO Score (0-100) with prioritized action plan.
+description: Full website GEO+SEO audit with parallel subagent delegation. Orchestrates a comprehensive Generative Engine Optimization audit across AI citability, platform analysis, technical infrastructure, content quality, and schema markup, followed by a legal compliance check (Impressum, privacy policy, AGB). Produces a composite GEO Score (0-100) with prioritized action plan, plus a separate Legal Compliance Score.
 allowed-tools:
   - Read
   - Grep
@@ -116,6 +116,21 @@ Delegate analysis to 5 specialized subagents. Each subagent operates on the coll
 
 ---
 
+### Phase 2b: Legal Compliance Check (Last Analysis Step)
+
+Run this **after all five Phase 2 subagents have finished**, not in parallel with them. It needs their technology picture.
+
+**Subagent 6: Legal Compliance (geo-legal)**
+- Pass it: the target URL, the detected business type, the crawl set, and the technology context gathered so far. That covers the platform/CMS and server, third-party services, embeds and payment methods seen by `geo-technical` and `geo-schema`, plus the paths of their section files if they were written.
+- Verifies the current legal baseline against primary sources (laws change), then checks:
+  - **Impressum** (imprint): completeness, reachability and consistency (DE § 5 DDG / AT § 5 ECG / CH Art. 3 UWG)
+  - **Datenschutzerklärung** (privacy policy): Art. 13 GDPR completeness, plus a coverage matrix that matches every detected technology (`scripts/tech_detector.py`) against the policy text, plus consent behaviour before opt-in (§ 25 TDDDG)
+  - **AGB** (terms and conditions), if present: void or risky clauses, withdrawal rules, consumer information
+- Returns a **Legal Compliance Score (0-100)**. It is **not** part of the composite GEO Score (see below).
+- If the site is clearly outside DE/AT/CH/EU, the agent runs only generic checks and says so.
+
+---
+
 ### Phase 3: Score Aggregation and Report Generation
 
 #### Composite GEO Score Calculation
@@ -135,6 +150,8 @@ The overall GEO Score (0-100) is a weighted average of six category scores:
 ```
 GEO_Score = (Citability * 0.25) + (Brand * 0.20) + (EEAT * 0.20) + (Technical * 0.15) + (Schema * 0.10) + (Platform * 0.10)
 ```
+
+The **Legal Compliance Score** from `geo-legal` is reported next to the GEO Score but is **not weighted into it**. Legal compliance is a liability topic, not an AI-visibility signal. Keeping it separate also keeps GEO Scores comparable with earlier audits (`/geo compare`). Merge the legal findings into the severity lists below, tagged `[Legal]`.
 
 #### Score Interpretation
 
@@ -218,11 +235,13 @@ Generate a file called `GEO-AUDIT-REPORT.md` with the following structure:
 | Platform Optimization | [X]/100 | 10% | [X] |
 | **Overall GEO Score** | | | **[X]/100** |
 
+**Legal Compliance Score: [X]/100 ([Rating])**: reported separately, not part of the GEO Score. Automated pre-check, not legal advice.
+
 ---
 
 ## Critical Issues (Fix Immediately)
 
-[List each critical issue with specific page URLs and recommended fix]
+[List each critical issue with specific page URLs and recommended fix. Prefix legal findings with [Legal].]
 
 ## High Priority Issues
 
@@ -257,6 +276,12 @@ Generate a file called `GEO-AUDIT-REPORT.md` with the following structure:
 
 ### Platform Optimization ([X]/100)
 [Presence on YouTube, Reddit, Wikipedia, etc.]
+
+---
+
+## Legal Compliance ([X]/100)
+
+[Section returned by the geo-legal subagent: disclaimer, score breakdown, legal baseline verification, technology inventory, Impressum / Datenschutzerklärung / AGB findings, Needs Legal Review]
 
 ---
 

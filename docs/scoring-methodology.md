@@ -258,6 +258,27 @@ A strong platform score requires passing the crawler-access and entity-recogniti
 
 ---
 
+## Legal Compliance Score (reported separately)
+
+**Implemented by:** [`agents/geo-legal.md`](../agents/geo-legal.md) and [`scripts/tech_detector.py`](../scripts/tech_detector.py)
+
+The legal check runs as the last analysis step of `/geo audit` (and standalone as `/geo legal`). Its score is shown next to the GEO Score but is **not weighted into it**. Legal compliance is a liability topic rather than an AI-visibility signal. Keeping it out also keeps GEO Scores comparable across audits for `/geo compare`.
+
+| Component | Points |
+|---|---|
+| Impressum (completeness, reachability, consistency) | 30 |
+| Privacy policy: Art. 13 GDPR completeness | 15 |
+| Privacy policy: technology coverage (each detected service disclosed) | 15 |
+| Consent implementation (nothing consent-required fires before opt-in; banner design) | 10 |
+| AGB & consumer information | 20 |
+| Other mandatory information (unit prices, food info, GPSR, accessibility statement, …) | 10 |
+
+Within each component, a missing element (❌) deducts its full share and an incomplete one (⚠️) deducts half. Unverifiable points (❔) deduct nothing but are listed under "Needs Legal Review". Components that do not apply (e.g. no online sales) are redistributed proportionally. Hard caps: no Impressum or no privacy policy caps the score at 30, and a consent-required tracker firing before consent caps it at 60.
+
+The agent re-verifies the legal baseline against primary sources on every run and records the sources in its report. The score is an automated pre-check, not legal advice.
+
+---
+
 ## Caveats
 
 **Deterministic vs LLM-judged scoring.** The citability scorer (`scripts/citability_scorer.py`) and the llms.txt validator (`scripts/llmstxt_generator.py`) are fully deterministic: given the same HTML, they return the same numerical result every time. The Brand Authority, Content E-E-A-T, Technical, Schema, and Platform scores are produced by LLM subagents following documented rubrics; they are guided evaluations rather than reproducible computations. Two runs on the same URL may produce small differences in LLM-judged categories.
